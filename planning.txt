@@ -1,0 +1,35 @@
+OBJECTIVE -
+
+I want to create a virtual paint app which will use my laptop's webcam to detect my hand gestures to draw on a canvas on the screen.
+
+REQUIREMENTS -
+
+1. Webcam
+2. Python
+3. OpenCV (To handle the web cam video and creating the painting overlay)
+4. Mediapipe (To detect the hand gestures using pre-trained Google's ANNs)
+
+WORKFLOW -
+
+1. Create a "main.py" file
+2. Import numpy, opencv and mediapipe python packages
+3. Use OpenCV to open the web cam
+4. Create the paint app overlay using OpenCV as designed in @overlay.jpg
+5. Use mediapipe to detect the hand gestures ( highest number of hands to detect = 1 , hands detection confidence must be > 70%)
+6. There will be two modes -
+	
+	a. Select Mode - 
+
+		* Index and middle finger both will stay raised
+
+	b. Paint Mode -
+		
+		* Only index finger will stay raised
+
+7. Using OpenCV, paint the current mode on the center bottom of the screen
+8. When in the Select Mode - if the two fingers reach the area of any colour overlay then select that colour as the colour of painting
+9. Use OpenCV to create a green coloured border around the selected colour overlay
+10. Use OpenCV to Create a white coloured canvas on the right side of the screen starting from the middle
+11. When in the Paint Mode - trace the finger movement accordingly & paint on the canvas using the selected colour
+12. On pressing "esc" - Exit the application
+
