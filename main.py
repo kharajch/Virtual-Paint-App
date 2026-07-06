@@ -33,27 +33,30 @@ TRANSLATIONS = {
         "EXIT_LABEL": "ESC to Exit",
         "STANDBY": "Standby",
         "SELECT_MODE": "Select Mode",
-        "PAINT_MODE": "Paint Mode"
+        "PAINT_MODE": "Paint Mode",
+        "PAUSE_MODE": "Pause Mode"
     },
     "Bengali": {
         "RED": "লাল",
         "BLUE": "নীল",
         "GREEN": "সবুজ",
         "YELLOW": "হলুদ",
-        "ERASER": "মুছুন",
+        "ERASER": "মুছে ফেলুন",
         "SETTINGS": "সেটিংস",
         "SELECT_LANGUAGE": "ভাষা নির্বাচন করুন",
-        "ENGLISH_BTN": "ENGLISH",
+        "ENGLISH_BTN": "ইংরেজি",
         "BENGALI_BTN": "বাংলা",
-        "DONE_BTN": "সম্পন্ন",
+        "DONE_BTN": "বন্ধ করুন",
         "MODE_LABEL": "মোড: ",
         "TOOL_LABEL": "টুল: ",
-        "EXIT_LABEL": "বাহির হতে ESC চাপুন",
+        "EXIT_LABEL": "বন্ধ করুন - ESC চাপুন",
         "STANDBY": "প্রতীক্ষা",
         "SELECT_MODE": "নির্বাচন মোড",
-        "PAINT_MODE": "অঙ্কন মোড"
+        "PAINT_MODE": "অঙ্কন মোড",
+        "PAUSE_MODE": "সাময়িক বিরতি"
     }
 }
+
 
 # Settings Button coordinates (top-right header)
 SETTINGS_BTN = {"x_min": 900, "x_max": 1100, "y_min": 23, "y_max": 128}
@@ -65,9 +68,7 @@ BENGALI_OPT_BTN = {"x_min": 400, "x_max": 600, "y_min": 370, "y_max": 440}
 DONE_OPT_BTN = {"x_min": 660, "x_max": 780, "y_min": 440, "y_max": 500}
 
 # Font paths for rendering
-FONT_PATH_DEFAULT = "kalpurush.ttf"
-if not os.path.exists(FONT_PATH_DEFAULT):
-    FONT_PATH_DEFAULT = "C:\\Windows\\Fonts\\Nirmala.ttc"
+FONT_PATH_DEFAULT = "Nirmala.ttc"
 if not os.path.exists(FONT_PATH_DEFAULT):
     FONT_PATH_DEFAULT = "arial.ttf"
 
@@ -93,6 +94,14 @@ def check_fingers_raised(landmarks):
     index_raised = landmarks[8].y < landmarks[6].y
     middle_raised = landmarks[12].y < landmarks[10].y
     return index_raised, middle_raised
+
+def check_thumb_raised(landmarks):
+    """
+    Checks if the thumb is raised.
+    y-coordinate is 0 at the top, so a smaller y value means the finger tip is higher.
+    """
+    return landmarks[4].y < landmarks[3].y
+
 
 def get_tool_selection(x, y, colors_info=COLORS_INFO, menu_height=145):
     """
@@ -134,6 +143,9 @@ def get_canvas_coords(x, y):
 def main():
     current_language = "English"
     settings_active = False
+    is_painting = False
+    prev_index_raised = False
+
 
     # 1. Load the overlay image to copy the header design
     overlay_img = cv2.imread('overlay.jpg')
@@ -207,6 +219,7 @@ def main():
             for hand_landmarks in results.hand_landmarks:
                 
                 index_raised, middle_raised = check_fingers_raised(hand_landmarks)
+                thumb_raised = check_thumb_raised(hand_landmarks)
 
                 # Coordinates of index tip in pixel scale
                 h_img, w_img, _ = frame.shape
@@ -222,6 +235,7 @@ def main():
                     # Select Mode: Both Index and Middle fingers are raised
                     current_mode = "SELECT_MODE"
                     cursor_color = (0, 255, 255) # Yellow cursor for selection mode
+                    is_painting = False
                     
                     # Reset line tracing points
                     prev_x, prev_y = None, None
@@ -257,18 +271,35 @@ def main():
 
                 elif index_raised:
                     # Paint Mode: Only Index finger is raised
-                    current_mode = "PAINT_MODE"
-                    cursor_color = COLORS_INFO[current_selection_idx]["color"]
+                    # If index finger was not raised in the previous frame, start painting
+                    if not prev_index_raised:
+                        is_painting = True
+                    
+                    # If thumb is raised, stop painting
+                    if thumb_raised:
+                        is_painting = False
+
+                    if is_painting:
+                        current_mode = "PAINT_MODE"
+                        cursor_color = COLORS_INFO[current_selection_idx]["color"]
+                    else:
+                        current_mode = "PAUSE_MODE"
+                        cursor_color = (0, 165, 255) # Orange cursor for pause mode
 
                     # Draw index finger cursor feedback on the frame
-                    if COLORS_INFO[current_selection_idx]["name"] == "ERASER":
-                        cv2.circle(frame, (x, y), 25, (255, 255, 255), 2)
-                        cv2.circle(frame, (x, y), 2, (255, 255, 255), -1)
+                    if is_painting:
+                        if COLORS_INFO[current_selection_idx]["name"] == "ERASER":
+                            cv2.circle(frame, (x, y), 25, (255, 255, 255), 2)
+                            cv2.circle(frame, (x, y), 2, (255, 255, 255), -1)
+                        else:
+                            cv2.circle(frame, (x, y), 10, cursor_color, -1)
                     else:
-                        cv2.circle(frame, (x, y), 10, cursor_color, -1)
+                        # Paused feedback cursor (orange outline)
+                        cv2.circle(frame, (x, y), 15, cursor_color, 2)
+                        cv2.circle(frame, (x, y), 2, cursor_color, -1)
 
-                    # Draw on the canvas (only if settings menu is not open)
-                    if not settings_active:
+                    # Draw on the canvas (only if settings menu is not open and is_painting is True)
+                    if not settings_active and is_painting:
                         canvas_coords = get_canvas_coords(x, y)
                         if canvas_coords is not None:
                             cx, cy = canvas_coords
@@ -281,9 +312,15 @@ def main():
                                     cv2.line(canvas, (pcx, pcy), (cx, cy), cursor_color, thickness)
                             
                             prev_x, prev_y = x, y
+                    else:
+                        # Reset line trace when paused or settings active
+                        prev_x, prev_y = None, None
                 else:
-                    # No mode matched, reset line trace
+                    # No mode matched, reset line trace and painting state
                     prev_x, prev_y = None, None
+                    is_painting = False
+
+                prev_index_raised = index_raised
 
                 # draw hand landmarks manually on the camera frame
                 for lm in hand_landmarks:
@@ -291,8 +328,11 @@ def main():
                     lm_y = int(lm.y * h_img)
                     cv2.circle(frame, (lm_x, lm_y), 4, (255, 0, 255), -1)
         else:
-            # Reset line trace when no hand is detected
+            # Reset line trace and states when no hand is detected
             prev_x, prev_y = None, None
+            is_painting = False
+            prev_index_raised = False
+
 
         # Blend drawing canvas with webcam frame
         # Find where canvas is not black (i.e. has drawing elements)
@@ -414,7 +454,7 @@ def main():
             mode_text,
             (355, 585),
             font_size=18,
-            font_color=(0, 255, 0) if current_mode == "PAINT_MODE" else (0, 255, 255)
+            font_color=(0, 255, 0) if current_mode == "PAINT_MODE" else ((0, 165, 255) if current_mode == "PAUSE_MODE" else (0, 255, 255))
         )
         combined = render_bengali_text(
             combined,

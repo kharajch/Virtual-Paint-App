@@ -1,0 +1,30 @@
+OBJECTIVE -
+
+I want to implement a feature where the thumb impression will stop the writing.
+
+WORKFLOW -
+
+1. Read @main.py
+2. Previously there were 2 modes -
+
+	a. Select Mode - 
+
+		* Index and middle finger both will stay raised
+
+	b. Paint Mode -
+		
+		* Only index finger will stay raised
+
+3. Implement a new mode -
+
+    c. Pause Mode -
+
+        * Trigger when thumb will be raised 
+
+
+Implementation Logic -
+
+        1. Create a new variable named IS_PAINTING (default value false)
+        2. When the index finger is raised, set IS_PAINTING = true which will allow to paint in the canvas
+        3. When the thumb is raised once, set IS_PAINTING = false which will not allow us to paint in the canvas 
+        4. If the index finger is raised again set IS_PAINTING = true again and allow to paint in the canvas
