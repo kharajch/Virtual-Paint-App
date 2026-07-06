@@ -3,6 +3,8 @@ import numpy as np
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from PIL import Image, ImageDraw, ImageFont
+import os
 
 # Define color block coordinate ranges (x_min, x_max, name, color_bgr, thickness)
 COLORS_INFO = [
@@ -12,6 +14,74 @@ COLORS_INFO = [
     {"x_min": 491, "x_max": 627, "name": "YELLOW", "color": (0, 242, 254), "thickness": 8},
     {"x_min": 648, "x_max": 791, "name": "ERASER", "color": (0, 0, 0), "thickness": 50}  # Eraser draws black (0,0,0) to clear mask
 ]
+
+# Multilingual Translations
+TRANSLATIONS = {
+    "English": {
+        "RED": "RED",
+        "BLUE": "BLUE",
+        "GREEN": "GREEN",
+        "YELLOW": "YELLOW",
+        "ERASER": "ERASER",
+        "SETTINGS": "SETTINGS",
+        "SELECT_LANGUAGE": "SELECT LANGUAGE",
+        "ENGLISH_BTN": "ENGLISH",
+        "BENGALI_BTN": "BENGALI",
+        "DONE_BTN": "DONE",
+        "MODE_LABEL": "Mode: ",
+        "TOOL_LABEL": "Tool: ",
+        "EXIT_LABEL": "ESC to Exit",
+        "STANDBY": "Standby",
+        "SELECT_MODE": "Select Mode",
+        "PAINT_MODE": "Paint Mode"
+    },
+    "Bengali": {
+        "RED": "লাল",
+        "BLUE": "নীল",
+        "GREEN": "সবুজ",
+        "YELLOW": "হলুদ",
+        "ERASER": "মুছনি",
+        "SETTINGS": "সেটিংস",
+        "SELECT_LANGUAGE": "ভাষা নির্বাচন করুন",
+        "ENGLISH_BTN": "English",
+        "BENGALI_BTN": "বাংলা",
+        "DONE_BTN": "সম্পন্ন",
+        "MODE_LABEL": "মোড: ",
+        "TOOL_LABEL": "টুল: ",
+        "EXIT_LABEL": "বাহির হতে ESC চাপুন",
+        "STANDBY": "অপেক্ষমান",
+        "SELECT_MODE": "নির্বাচন মোড",
+        "PAINT_MODE": "আঁকার মোড"
+    }
+}
+
+# Settings Button coordinates (top-right header)
+SETTINGS_BTN = {"x_min": 900, "x_max": 1100, "y_min": 23, "y_max": 128}
+
+# Settings Modal layout coordinates
+MODAL_BOX = {"x_min": 320, "x_max": 832, "y_min": 150, "y_max": 550}
+ENGLISH_OPT_BTN = {"x_min": 400, "x_max": 600, "y_min": 260, "y_max": 330}
+BENGALI_OPT_BTN = {"x_min": 400, "x_max": 600, "y_min": 370, "y_max": 440}
+DONE_OPT_BTN = {"x_min": 660, "x_max": 780, "y_min": 440, "y_max": 500}
+
+# Font paths for rendering
+FONT_PATH_DEFAULT = "C:\\Windows\\Fonts\\Nirmala.ttc"
+if not os.path.exists(FONT_PATH_DEFAULT):
+    FONT_PATH_DEFAULT = "arial.ttf"
+
+def render_bengali_text(img, text, position, font_size=20, font_color=(255, 255, 255)):
+    """
+    Renders Bengali or English text using PIL library onto the OpenCV frame.
+    Supports complex scripts.
+    """
+    img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil)
+    try:
+        font = ImageFont.truetype(FONT_PATH_DEFAULT, font_size)
+    except IOError:
+        font = ImageFont.load_default()
+    draw.text(position, text, font=font, fill=font_color)
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
 def check_fingers_raised(landmarks):
     """
@@ -32,6 +102,27 @@ def get_tool_selection(x, y, colors_info=COLORS_INFO, menu_height=145):
                 return idx
     return None
 
+def check_settings_trigger(x, y, menu_height=145):
+    """
+    Checks if selection coordinates hover over the Settings button.
+    """
+    if y < menu_height:
+        if SETTINGS_BTN["x_min"] <= x <= SETTINGS_BTN["x_max"]:
+            return True
+    return False
+
+def check_modal_options(x, y):
+    """
+    Returns the hovered option in settings modal: "ENGLISH", "BENGALI", "DONE", or None.
+    """
+    if ENGLISH_OPT_BTN["x_min"] <= x <= ENGLISH_OPT_BTN["x_max"] and ENGLISH_OPT_BTN["y_min"] <= y <= ENGLISH_OPT_BTN["y_max"]:
+        return "ENGLISH"
+    elif BENGALI_OPT_BTN["x_min"] <= x <= BENGALI_OPT_BTN["x_max"] and BENGALI_OPT_BTN["y_min"] <= y <= BENGALI_OPT_BTN["y_max"]:
+        return "BENGALI"
+    elif DONE_OPT_BTN["x_min"] <= x <= DONE_OPT_BTN["x_max"] and DONE_OPT_BTN["y_min"] <= y <= DONE_OPT_BTN["y_max"]:
+        return "DONE"
+    return None
+
 def get_canvas_coords(x, y):
     """
     Returns the coordinates for drawing. Now allows drawing anywhere on the full screen.
@@ -39,6 +130,8 @@ def get_canvas_coords(x, y):
     return x, y
 
 def main():
+    current_language = "English"
+    settings_active = False
 
     # 1. Load the overlay image to copy the header design
     overlay_img = cv2.imread('overlay.jpg')
@@ -105,7 +198,7 @@ def main():
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         results = detector.detect(mp_image)
 
-        current_mode = "Standby"
+        current_mode = "STANDBY"
         cursor_color = (128, 128, 128)
 
         if results.hand_landmarks:
@@ -125,7 +218,7 @@ def main():
                 # Mode selection logic
                 if index_raised and middle_raised:
                     # Select Mode: Both Index and Middle fingers are raised
-                    current_mode = "Select Mode"
+                    current_mode = "SELECT_MODE"
                     cursor_color = (0, 255, 255) # Yellow cursor for selection mode
                     
                     # Reset line tracing points
@@ -143,14 +236,26 @@ def main():
                     cv2.circle(frame, (mx, my), 8, cursor_color, -1)
                     cv2.line(frame, (x, y), (mx, my), cursor_color, 2)
 
-                    # Check selection header triggers
-                    sel_idx = get_tool_selection(x, y, COLORS_INFO)
-                    if sel_idx is not None:
-                        current_selection_idx = sel_idx
+                    if settings_active:
+                        # Interact with settings modal
+                        opt = check_modal_options(x, y)
+                        if opt == "ENGLISH":
+                            current_language = "English"
+                        elif opt == "BENGALI":
+                            current_language = "Bengali"
+                        elif opt == "DONE":
+                            settings_active = False
+                    else:
+                        # Check selection header triggers
+                        sel_idx = get_tool_selection(x, y, COLORS_INFO)
+                        if sel_idx is not None:
+                            current_selection_idx = sel_idx
+                        elif check_settings_trigger(x, y):
+                            settings_active = True
 
                 elif index_raised:
                     # Paint Mode: Only Index finger is raised
-                    current_mode = "Paint Mode"
+                    current_mode = "PAINT_MODE"
                     cursor_color = COLORS_INFO[current_selection_idx]["color"]
 
                     # Draw index finger cursor feedback on the frame
@@ -160,19 +265,20 @@ def main():
                     else:
                         cv2.circle(frame, (x, y), 10, cursor_color, -1)
 
-                    # Draw on the canvas
-                    canvas_coords = get_canvas_coords(x, y)
-                    if canvas_coords is not None:
-                        cx, cy = canvas_coords
-                        if prev_x is not None:
-                            prev_canvas_coords = get_canvas_coords(prev_x, prev_y)
-                            if prev_canvas_coords is not None:
-                                pcx, pcy = prev_canvas_coords
-                                thickness = COLORS_INFO[current_selection_idx]["thickness"]
-                                # Draw line on canvas
-                                cv2.line(canvas, (pcx, pcy), (cx, cy), cursor_color, thickness)
-                        
-                        prev_x, prev_y = x, y
+                    # Draw on the canvas (only if settings menu is not open)
+                    if not settings_active:
+                        canvas_coords = get_canvas_coords(x, y)
+                        if canvas_coords is not None:
+                            cx, cy = canvas_coords
+                            if prev_x is not None:
+                                prev_canvas_coords = get_canvas_coords(prev_x, prev_y)
+                                if prev_canvas_coords is not None:
+                                    pcx, pcy = prev_canvas_coords
+                                    thickness = COLORS_INFO[current_selection_idx]["thickness"]
+                                    # Draw line on canvas
+                                    cv2.line(canvas, (pcx, pcy), (cx, cy), cursor_color, thickness)
+                            
+                            prev_x, prev_y = x, y
                 else:
                     # No mode matched, reset line trace
                     prev_x, prev_y = None, None
@@ -203,6 +309,17 @@ def main():
         # We overlay it on top of the blended image
         combined[0:145, :] = overlay_img[0:145, :]
 
+        # Draw Settings Button on header
+        cv2.rectangle(combined, (SETTINGS_BTN["x_min"], SETTINGS_BTN["y_min"]), (SETTINGS_BTN["x_max"], SETTINGS_BTN["y_max"]), (255, 255, 255), -1)
+        cv2.rectangle(combined, (SETTINGS_BTN["x_min"], SETTINGS_BTN["y_min"]), (SETTINGS_BTN["x_max"], SETTINGS_BTN["y_max"]), (0, 0, 0), 3)
+        combined = render_bengali_text(
+            combined, 
+            TRANSLATIONS[current_language]["SETTINGS"], 
+            (SETTINGS_BTN["x_min"] + 20, SETTINGS_BTN["y_min"] + 30), 
+            font_size=24, 
+            font_color=(0, 0, 0)
+        )
+
         # 9. Use OpenCV to create a green coloured border around the selected colour overlay
         selected_tool = COLORS_INFO[current_selection_idx]
         border_x_min = selected_tool["x_min"] - 4
@@ -211,17 +328,106 @@ def main():
         border_y_max = 128 + 4
         cv2.rectangle(combined, (border_x_min, border_y_min), (border_x_max, border_y_max), (0, 255, 0), 4)
 
+        # Draw Settings Dialog Modal if active
+        if settings_active:
+            # Semi-transparent overlay backdrop
+            overlay_bg = combined.copy()
+            cv2.rectangle(overlay_bg, (0, 0), (1152, 648), (0, 0, 0), -1)
+            cv2.addWeighted(overlay_bg, 0.4, combined, 0.6, 0, combined)
+
+            # Draw Dialog Box
+            cv2.rectangle(combined, (MODAL_BOX["x_min"], MODAL_BOX["y_min"]), (MODAL_BOX["x_max"], MODAL_BOX["y_max"]), (255, 255, 255), -1)
+            cv2.rectangle(combined, (MODAL_BOX["x_min"], MODAL_BOX["y_min"]), (MODAL_BOX["x_max"], MODAL_BOX["y_max"]), (36, 114, 237), 5) # Orange/blue border
+
+            # Title
+            combined = render_bengali_text(
+                combined,
+                TRANSLATIONS[current_language]["SETTINGS"],
+                (MODAL_BOX["x_min"] + 180, MODAL_BOX["y_min"] + 20),
+                font_size=32,
+                font_color=(180, 0, 0)
+            )
+
+            # Prompt label
+            combined = render_bengali_text(
+                combined,
+                TRANSLATIONS[current_language]["SELECT_LANGUAGE"],
+                (MODAL_BOX["x_min"] + 40, MODAL_BOX["y_min"] + 70),
+                font_size=20,
+                font_color=(180, 0, 0)
+            )
+
+            # Draw English option button
+            eng_border_color = (0, 255, 0) if current_language == "English" else (0, 0, 0)
+            cv2.rectangle(combined, (ENGLISH_OPT_BTN["x_min"], ENGLISH_OPT_BTN["y_min"]), (ENGLISH_OPT_BTN["x_max"], ENGLISH_OPT_BTN["y_max"]), (240, 240, 240), -1)
+            cv2.rectangle(combined, (ENGLISH_OPT_BTN["x_min"], ENGLISH_OPT_BTN["y_min"]), (ENGLISH_OPT_BTN["x_max"], ENGLISH_OPT_BTN["y_max"]), eng_border_color, 3)
+            combined = render_bengali_text(
+                combined,
+                TRANSLATIONS[current_language]["ENGLISH_BTN"],
+                (ENGLISH_OPT_BTN["x_min"] + 50, ENGLISH_OPT_BTN["y_min"] + 20),
+                font_size=22,
+                font_color=(0, 0, 0)
+            )
+
+            # Draw Bengali option button
+            beng_border_color = (0, 255, 0) if current_language == "Bengali" else (0, 0, 0)
+            cv2.rectangle(combined, (BENGALI_OPT_BTN["x_min"], BENGALI_OPT_BTN["y_min"]), (BENGALI_OPT_BTN["x_max"], BENGALI_OPT_BTN["y_max"]), (240, 240, 240), -1)
+            cv2.rectangle(combined, (BENGALI_OPT_BTN["x_min"], BENGALI_OPT_BTN["y_min"]), (BENGALI_OPT_BTN["x_max"], BENGALI_OPT_BTN["y_max"]), beng_border_color, 3)
+            combined = render_bengali_text(
+                combined,
+                TRANSLATIONS[current_language]["BENGALI_BTN"],
+                (BENGALI_OPT_BTN["x_min"] + 50, BENGALI_OPT_BTN["y_min"] + 20),
+                font_size=22,
+                font_color=(0, 0, 0)
+            )
+
+            # Draw Done button
+            cv2.rectangle(combined, (DONE_OPT_BTN["x_min"], DONE_OPT_BTN["y_min"]), (DONE_OPT_BTN["x_max"], DONE_OPT_BTN["y_max"]), (240, 240, 240), -1)
+            cv2.rectangle(combined, (DONE_OPT_BTN["x_min"], DONE_OPT_BTN["y_min"]), (DONE_OPT_BTN["x_max"], DONE_OPT_BTN["y_max"]), (0, 0, 255), 3)
+            combined = render_bengali_text(
+                combined,
+                TRANSLATIONS[current_language]["DONE_BTN"],
+                (DONE_OPT_BTN["x_min"] + 20, DONE_OPT_BTN["y_min"] + 15),
+                font_size=20,
+                font_color=(180, 0, 0)
+            )
+
         # 7. Using OpenCV, paint the current mode and active tool on the center bottom of the screen
-        mode_text = f"Mode: {current_mode}"
-        tool_text = f"Tool: {selected_tool['name']}"
+        mode_key = current_mode
+        mode_text_val = TRANSLATIONS[current_language][mode_key]
+        mode_text = f"{TRANSLATIONS[current_language]['MODE_LABEL']}{mode_text_val}"
+        
+        tool_name_key = selected_tool["name"]
+        tool_text_val = TRANSLATIONS[current_language][tool_name_key]
+        tool_text = f"{TRANSLATIONS[current_language]['TOOL_LABEL']}{tool_text_val}"
+
+        exit_text = TRANSLATIONS[current_language]["EXIT_LABEL"]
         
         # Bottom HUD background box
-        cv2.rectangle(combined, (380, 580), (770, 635), (0, 0, 0), -1)
-        cv2.rectangle(combined, (380, 580), (770, 635), (255, 255, 255), 2)
+        cv2.rectangle(combined, (340, 580), (810, 635), (0, 0, 0), -1)
+        cv2.rectangle(combined, (340, 580), (810, 635), (255, 255, 255), 2)
         
-        cv2.putText(combined, mode_text, (395, 605), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if current_mode == "Paint Mode" else (0, 255, 255), 2)
-        cv2.putText(combined, tool_text, (395, 625), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-        cv2.putText(combined, "ESC to Exit", (660, 615), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        combined = render_bengali_text(
+            combined,
+            mode_text,
+            (355, 585),
+            font_size=18,
+            font_color=(0, 255, 0) if current_mode == "PAINT_MODE" else (0, 255, 255)
+        )
+        combined = render_bengali_text(
+            combined,
+            tool_text,
+            (355, 610),
+            font_size=18,
+            font_color=(255, 255, 255)
+        )
+        combined = render_bengali_text(
+            combined,
+            exit_text,
+            (640, 595),
+            font_size=18,
+            font_color=(0, 0, 255)
+        )
 
         # Show the app window
         cv2.imshow("Virtual Paint App", combined)

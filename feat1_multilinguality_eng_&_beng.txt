@@ -1,0 +1,12 @@
+OBJECTIVE -
+I have to create a settings button to implement multiliguality feature in the virtual paint app.
+
+WORKFLOW -
+
+1. Analyze @feature1_multilinguality_eng_&_beng.jpg To Implement The UI.
+2. When I select that "Settings" button in the Select Mode using my index and middle finger, a pop up window will open.
+3. There will be two switches "English" and "Bengali"
+4. On the bottom right of the pop up window there will be a "Done" Button
+5. Hovering on "English" button while in the Select Mode Will translate all the text on the screen into English.
+6. Hovering on "Bengali" button while in the Select Mode Will translate all the text on the screen into Bengali.
+7. Hovering On "Done" Button while in the Select Mode will close the Settings pop up window.

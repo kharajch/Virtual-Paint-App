@@ -29,7 +29,7 @@ WORKFLOW -
 7. Using OpenCV, paint the current mode on the center bottom of the screen
 8. When in the Select Mode - if the two fingers reach the area of any colour overlay then select that colour as the colour of painting
 9. Use OpenCV to create a green coloured border around the selected colour overlay
-10. Use OpenCV to Create a white coloured canvas on the right side of the screen starting from the middle
+10. Use OpenCV to create and merge the canvas on top of the web cam live video. 
 11. When in the Paint Mode - trace the finger movement accordingly & paint on the canvas using the selected colour
 12. On pressing "esc" - Exit the application
 
