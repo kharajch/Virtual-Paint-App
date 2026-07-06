@@ -24,7 +24,7 @@ WORKFLOW -
 
 Implementation Logic -
 
-        1. Create a new variable named IS_PAINTING (default value false)
+        1. Create a new variable named IS_PAINTING (default value true)
         2. When the index finger is raised, set IS_PAINTING = true which will allow to paint in the canvas
-        3. When the thumb is raised once, set IS_PAINTING = false which will not allow us to paint in the canvas 
+        3. When three fingers (index, middle and the next or more) is raised once, set IS_PAINTING = false which will not allow us to paint in the canvas 
         4. If the index finger is raised again set IS_PAINTING = true again and allow to paint in the canvas
