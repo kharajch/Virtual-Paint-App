@@ -271,13 +271,12 @@ def main():
 
                 elif index_raised:
                     # Paint Mode: Only Index finger is raised
-                    # If index finger was not raised in the previous frame, start painting
-                    if not prev_index_raised:
-                        is_painting = True
-                    
-                    # If thumb is raised, stop painting
+                    # If thumb is raised, stop painting (Pause Mode), otherwise paint (default)
                     if thumb_raised:
                         is_painting = False
+                    else:
+                        is_painting = True
+
 
                     if is_painting:
                         current_mode = "PAINT_MODE"
@@ -330,8 +329,8 @@ def main():
         else:
             # Reset line trace and states when no hand is detected
             prev_x, prev_y = None, None
-            is_painting = False
-            prev_index_raised = False
+            is_painting = True
+            prev_index_raised = True
 
 
         # Blend drawing canvas with webcam frame
