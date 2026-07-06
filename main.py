@@ -40,10 +40,10 @@ TRANSLATIONS = {
         "BLUE": "নীল",
         "GREEN": "সবুজ",
         "YELLOW": "হলুদ",
-        "ERASER": "মুছনি",
+        "ERASER": "মুছুন",
         "SETTINGS": "সেটিংস",
         "SELECT_LANGUAGE": "ভাষা নির্বাচন করুন",
-        "ENGLISH_BTN": "English",
+        "ENGLISH_BTN": "ENGLISH",
         "BENGALI_BTN": "বাংলা",
         "DONE_BTN": "সম্পন্ন",
         "MODE_LABEL": "মোড: ",
@@ -51,7 +51,7 @@ TRANSLATIONS = {
         "EXIT_LABEL": "বাহির হতে ESC চাপুন",
         "STANDBY": "অপেক্ষমান",
         "SELECT_MODE": "নির্বাচন মোড",
-        "PAINT_MODE": "আঁকার মোড"
+        "PAINT_MODE": "অঙ্কন মোড"
     }
 }
 
@@ -65,7 +65,9 @@ BENGALI_OPT_BTN = {"x_min": 400, "x_max": 600, "y_min": 370, "y_max": 440}
 DONE_OPT_BTN = {"x_min": 660, "x_max": 780, "y_min": 440, "y_max": 500}
 
 # Font paths for rendering
-FONT_PATH_DEFAULT = "C:\\Windows\\Fonts\\Nirmala.ttc"
+FONT_PATH_DEFAULT = "kalpurush.ttf"
+if not os.path.exists(FONT_PATH_DEFAULT):
+    FONT_PATH_DEFAULT = "C:\\Windows\\Fonts\\Nirmala.ttc"
 if not os.path.exists(FONT_PATH_DEFAULT):
     FONT_PATH_DEFAULT = "arial.ttf"
 
