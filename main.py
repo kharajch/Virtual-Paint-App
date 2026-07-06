@@ -49,7 +49,7 @@ TRANSLATIONS = {
         "MODE_LABEL": "মোড: ",
         "TOOL_LABEL": "টুল: ",
         "EXIT_LABEL": "বাহির হতে ESC চাপুন",
-        "STANDBY": "অপেক্ষমান",
+        "STANDBY": "প্রতীক্ষা",
         "SELECT_MODE": "নির্বাচন মোড",
         "PAINT_MODE": "অঙ্কন মোড"
     }
