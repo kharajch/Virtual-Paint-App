@@ -95,12 +95,13 @@ def check_fingers_raised(landmarks):
     middle_raised = landmarks[12].y < landmarks[10].y
     return index_raised, middle_raised
 
-def check_thumb_raised(landmarks):
+def check_ring_raised(landmarks):
     """
-    Checks if the thumb is raised.
+    Checks if the ring finger is raised.
     y-coordinate is 0 at the top, so a smaller y value means the finger tip is higher.
     """
-    return landmarks[4].y < landmarks[3].y
+    return landmarks[16].y < landmarks[14].y
+
 
 
 def get_tool_selection(x, y, colors_info=COLORS_INFO, menu_height=145):
@@ -143,8 +144,8 @@ def get_canvas_coords(x, y):
 def main():
     current_language = "English"
     settings_active = False
-    is_painting = False
-    prev_index_raised = False
+    is_paused = False
+
 
 
     # 1. Load the overlay image to copy the header design
@@ -219,7 +220,7 @@ def main():
             for hand_landmarks in results.hand_landmarks:
                 
                 index_raised, middle_raised = check_fingers_raised(hand_landmarks)
-                thumb_raised = check_thumb_raised(hand_landmarks)
+                ring_raised = check_ring_raised(hand_landmarks)
 
                 # Coordinates of index tip in pixel scale
                 h_img, w_img, _ = frame.shape
@@ -230,12 +231,17 @@ def main():
                 x = max(0, min(x, w_img - 1))
                 y = max(0, min(y, h_img - 1))
 
+                # Update pause state based on user gesture
+                if index_raised and middle_raised and ring_raised:
+                    is_paused = True
+                elif index_raised and not middle_raised and not ring_raised:
+                    is_paused = False
+
                 # Mode selection logic
-                if index_raised and middle_raised:
-                    # Select Mode: Both Index and Middle fingers are raised
+                if index_raised and middle_raised and not ring_raised:
+                    # Select Mode: Both Index and Middle fingers are raised, but not Ring finger
                     current_mode = "SELECT_MODE"
                     cursor_color = (0, 255, 255) # Yellow cursor for selection mode
-                    is_painting = False
                     
                     # Reset line tracing points
                     prev_x, prev_y = None, None
@@ -270,23 +276,16 @@ def main():
                             settings_active = True
 
                 elif index_raised:
-                    # Paint Mode: Only Index finger is raised
-                    # If thumb is raised, stop painting (Pause Mode), otherwise paint (default)
-                    if thumb_raised:
-                        is_painting = False
-                    else:
-                        is_painting = True
-
-
-                    if is_painting:
-                        current_mode = "PAINT_MODE"
-                        cursor_color = COLORS_INFO[current_selection_idx]["color"]
-                    else:
+                    # Paint or Pause Mode: Index finger is raised
+                    if is_paused:
                         current_mode = "PAUSE_MODE"
                         cursor_color = (0, 165, 255) # Orange cursor for pause mode
+                    else:
+                        current_mode = "PAINT_MODE"
+                        cursor_color = COLORS_INFO[current_selection_idx]["color"]
 
                     # Draw index finger cursor feedback on the frame
-                    if is_painting:
+                    if not is_paused:
                         if COLORS_INFO[current_selection_idx]["name"] == "ERASER":
                             cv2.circle(frame, (x, y), 25, (255, 255, 255), 2)
                             cv2.circle(frame, (x, y), 2, (255, 255, 255), -1)
@@ -297,8 +296,8 @@ def main():
                         cv2.circle(frame, (x, y), 15, cursor_color, 2)
                         cv2.circle(frame, (x, y), 2, cursor_color, -1)
 
-                    # Draw on the canvas (only if settings menu is not open and is_painting is True)
-                    if not settings_active and is_painting:
+                    # Draw on the canvas (only if settings menu is not open and not is_paused)
+                    if not settings_active and not is_paused:
                         canvas_coords = get_canvas_coords(x, y)
                         if canvas_coords is not None:
                             cx, cy = canvas_coords
@@ -315,11 +314,9 @@ def main():
                         # Reset line trace when paused or settings active
                         prev_x, prev_y = None, None
                 else:
-                    # No mode matched, reset line trace and painting state
+                    # No mode matched, reset line trace
                     prev_x, prev_y = None, None
-                    is_painting = False
 
-                prev_index_raised = index_raised
 
                 # draw hand landmarks manually on the camera frame
                 for lm in hand_landmarks:

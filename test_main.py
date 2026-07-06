@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 # Import the logic functions from main.py
 from main import (
     check_fingers_raised,
-    check_thumb_raised,
+    check_ring_raised,
     get_tool_selection,
     check_settings_trigger,
     check_modal_options,
@@ -47,16 +47,17 @@ def test_check_fingers_raised():
     assert index_raised is False
     assert middle_raised is False
 
-def test_check_thumb_raised():
-    # Case 1: Thumb raised (tip y < IP joint y)
+def test_check_ring_raised():
+    # Case 1: Ring finger raised (tip y < PIP joint y)
     landmarks = [MockLandmark(0, 0)] * 21
-    landmarks[4] = MockLandmark(0.3, 0.2)  # Thumb tip
-    landmarks[3] = MockLandmark(0.3, 0.4)  # Thumb IP joint
-    assert check_thumb_raised(landmarks) is True
+    landmarks[16] = MockLandmark(0.3, 0.2)  # Ring finger tip
+    landmarks[14] = MockLandmark(0.3, 0.4)  # Ring finger PIP joint
+    assert check_ring_raised(landmarks) is True
 
-    # Case 2: Thumb not raised (tip y > IP joint y)
-    landmarks[4] = MockLandmark(0.3, 0.5)
-    assert check_thumb_raised(landmarks) is False
+    # Case 2: Ring finger not raised (tip y > PIP joint y)
+    landmarks[16] = MockLandmark(0.3, 0.5)
+    assert check_ring_raised(landmarks) is False
+
 
 def test_get_tool_selection():
     # Verify tool matches by coordinate range in header
